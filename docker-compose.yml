@@ -1,0 +1,211 @@
+services:
+  proxy:
+    image: openresty/openresty:localhost-0-jammy
+    container_name: waxberry-proxy-1
+    restart: always
+    #network_mode: "host"
+    ports:
+      - "80:80"
+      - "443:443"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./conf/proxy/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./conf/proxy/sites:/usr/local/openresty/nginx/conf/sites:ro
+      - ./apps/waxberry-fe:/usr/share/nginx/html/waxberry-fe:ro
+      - ./apps/waxberry-auth-fe:/usr/share/nginx/html/waxberry-auth-fe:ro
+      - ./logs/proxy:/var/log/nginx
+      - ./conf/proxy/sites/ssl/localhost.pem:/etc/nginx/localhost.pem:ro
+      - ./conf/proxy/sites/ssl/localhost.key:/etc/nginx/localhost.key:ro
+
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - gateway
+      - auth
+      - fs
+  mysql:
+    image: mysql:9.1.0
+    container_name: waxberry-mysql-1
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=wb
+      - MYSQL_USER=wb
+      - MYSQL_PASSWORD=wb
+      - MYSQL_CHARSET=utf8mb4
+      - TZ=Asia/Shanghai
+    ports:
+      - "3306:3306"
+    #network_mode: "host"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # - ./init-scripts:/docker-entrypoint-initdb.d
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7.4.1
+    container_name: waxberry-redis-1
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "6379:6379"
+    #network_mode: "host"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --auto-aof-rewrite-percentage 100 --auto-aof-rewrite-min-size 64mb
+
+  sandbox:
+    image: ubuntu:latest
+    container_name: waxberry-sandbox-1  
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "9010:9010"
+    #network_mode: "host"
+    volumes:
+      - ./apps:/data/waxberry/apps
+      - ./conf:/data/waxberry/conf
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: /data/waxberry/apps/waxberry-sandbox /data/waxberry/conf/sandbox.yaml
+    depends_on:
+      - mysql
+      - redis
+  core:
+    image: ubuntu:latest
+    container_name: waxberry-core-1
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - CONFIG_FILE=/data/waxberry/conf/core.ini  
+    ports:
+      - "9040:9040"  
+    #network_mode: "host"
+    volumes:
+      - ./apps:/data/waxberry/apps
+      - ./conf:/data/waxberry/conf
+    command: /data/waxberry/apps/waxberry-core
+    depends_on:
+      - mysql
+      - redis
+
+  plugin:
+    image: waxberry-plugin:latest
+    container_name: waxberry-plugin-1
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "9020:9020"
+    #network_mode: "host"
+    volumes:
+      - ./apps/waxberry-plugin:/app
+    command: python main.py
+
+  manager:
+    image: openjdk:17-jdk
+    container_name: waxberry-manager-1
+    restart: always
+    command: ["java", "-jar", "/data/waxberry/apps/waxberry-manager.jar", "--spring.config.location=file:/data/waxberry/conf/manager.yml" ]
+    ports:
+      - "9030:9030"
+    #network_mode: "host"
+    depends_on:
+      - mysql
+      - minio
+      - redis
+    volumes:
+      - ./apps:/data/waxberry/apps
+      - ./conf:/data/waxberry/conf
+      - ./data:/data/waxberry/data
+      - ./logs:/data/waxberry/logs
+      - ./bin/wait-for-it.sh:/data/waxberry/bin/wait-for-it.sh
+    environment:
+      - TZ=Asia/Shanghai    
+  auth:
+    image: openjdk:17-jdk
+    container_name: waxberry-auth-1
+    restart: always
+    command: ["java", "-jar", "/data/waxberry/apps/waxberry-auth.jar", "--spring.config.location=file:/data/waxberry/conf/auth.yml" ]
+    ports:
+      - "9050:9050"
+    #network_mode: "host"
+    depends_on:
+      - mysql
+      - minio
+      - redis
+    volumes:
+      - ./apps:/data/waxberry/apps
+      - ./conf:/data/waxberry/conf
+      - ./data:/data/waxberry/data
+      - ./logs:/data/waxberry/logs
+      - ./bin/wait-for-it.sh:/data/waxberry/bin/wait-for-it.sh
+    environment:
+      - TZ=Asia/Shanghai 
+  gateway:
+    image: openjdk:17-jdk
+    container_name: waxberry-gateway-1
+    restart: always
+    command: ["java", "-jar", "/data/waxberry/apps/waxberry-gateway.jar", "--spring.config.location=file:/data/waxberry/conf/gateway.yml"]
+    ports:
+      - "8000:8000"
+    #network_mode: "host"
+    depends_on:
+      - mysql
+      - minio
+      - redis
+    volumes:
+      - ./apps:/data/waxberry/apps
+      - ./conf:/data/waxberry/conf
+      - ./data:/data/waxberry/data
+      - ./logs:/data/waxberry/logs
+      - ./bin/wait-for-it.sh:/data/waxberry/bin/wait-for-it.sh
+    environment:
+      - TZ=Asia/Shanghai
+  fs:
+    image: openjdk:17-jdk
+    container_name: waxberry-fs-1
+    restart: always
+    command: ["java", "-jar", "/data/waxberry/apps/waxberry-fileserver.jar", "--spring.config.location=file:/data/waxberry/conf/fs.yml"]
+    ports:
+      - "9060:9060"
+    #network_mode: "host"
+    depends_on:
+      - mysql
+      - minio
+      - redis
+    volumes:
+      - ./apps:/data/waxberry/apps
+      - ./conf:/data/waxberry/conf
+      - ./data:/data/waxberry/data
+      - ./logs:/data/waxberry/logs
+      - ./bin/wait-for-it.sh:/data/waxberry/bin/wait-for-it.sh
+    environment:
+         - TZ=Asia/Shanghai
+  minio:
+    image: minio/minio:latest
+    container_name: waxberry-minio-1
+    restart: always
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - TZ=Asia/Shanghai
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    #network_mode: "host"
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  mysql-data:
+    external: false
+  redis-data:
+    external: false
+  minio-data:
+    external: false

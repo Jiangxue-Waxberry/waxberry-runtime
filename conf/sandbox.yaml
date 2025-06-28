@@ -1,0 +1,18 @@
+server:
+  port: "9010"
+
+database:
+  dsn: "wb:wb@tcp(localhost:3306)/wb?parseTime=true"
+
+document_api:
+  extraction_url: "http://localhost:9020/api/v1/extract/bytes"    
+  image_to_text_url: "http://localhost:9020/api/v1/imageToText"  
+logging:
+  development: false  
+  level: "debug"      # 可选值: debug, info, warn, error, fatal 
+  file_output: false  # 是否输出到文件
+  file_path: "/opt/logs/sandbox-web-service.log"  # 日志文件路径
+  max_size: 100  # 单个日志文件最大尺寸(MB)
+  max_backups: 10  # 保留的旧日志文件数量
+  max_age: 30  # 保留的日志文件天数(超过这个天数的会被删除)
+  compress: true  # 是否压缩旧日志文件 

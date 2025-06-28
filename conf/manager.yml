@@ -1,0 +1,60 @@
+server:
+  port: 9030
+  forward-headers-strategy: NATIVE
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 2
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  jpa:
+    hibernate:
+      ddl-auto: update
+      show-sql: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/wb?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: wb
+    password: wb
+  servlet:
+    multipart:
+      max-file-size: 100MB      # 单个文件的最大大小
+      max-request-size: 100MB   # 单个请求的最大大小（包含所有文件）      
+
+security:
+  # 允许匿名访问的路径
+  permit-all-paths:
+    - /fs/**
+    - /swagger-ui/**
+    - /v3/api-docs/**
+    - /login
+    - /login/**
+    - /.well-known/**
+    - /userinfo
+    - /connect/**
+    - /public/**
+    - /actuator/**   
+    - /oauth2/**
+    - /mgr/**
+fileserver:
+  minio:
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: waxberry
+
+
+manage:
+  sandbox-url: http://localhost:9010
+  plugin-url: http://localhost:9020/
+  fileserver-url: http://localhost:9060/
+  core-url: https://localhost/core
+  ALIBABA_CLOUD_ACCESS_KEY_ID: 
+  ALIBABA_CLOUD_ACCESS_KEY_SECRET: 

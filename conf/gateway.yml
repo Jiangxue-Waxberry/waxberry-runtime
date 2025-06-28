@@ -1,0 +1,121 @@
+server:
+  address: 0.0.0.0
+  port: 8000
+
+spring:
+  application:
+    name: waxberry-gateway
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  webflux:
+    multipart:
+      max-in-memory-size: 10MB
+      max-disk-usage-per-part: 100MB
+      max-parts: 128
+  codec:
+    max-in-memory-size: 100MB
+
+  # OAuth2 Resource Server 配置
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://localhost
+          jwk-set-uri: https://localhost/oauth2/jwks
+
+  cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            chat-server:
+              - uri: http://localhost:9040
+    gateway:
+      routes:
+        - id: auth-server
+          uri: http://localhost:9050
+          predicates:
+            - Path=/auth/**
+          filters:
+            - OAuth2Authentication
+            - PreserveHostHeader
+        - id: chat-server
+          uri: lb://chat-server
+          predicates:
+            - Path=/core/**
+          filters:
+            - StripPrefix=1
+            - OAuth2Authentication
+            - PreserveHostHeader
+        - id: sandbox-server
+          uri: http://localhost:9010
+          predicates:
+            - Path=/sandboxes/**
+          filters:
+            - PreserveHostHeader
+            - OAuth2Authentication  
+            - name: RequestSize
+              args:
+                maxSize: 100MB
+        - id: manager-server
+          uri: http://localhost:9030
+          predicates:
+            - Path=/mgr/**
+          filters:
+            - name: OAuth2Authentication
+              args:
+                whitelistPaths:
+                  - "/mgr/agent/agent/findHomePageWaxberry"
+            - PreserveHostHeader
+        - id: plugin-server
+          uri: http://localhost:9020
+          predicates:
+            - Path=/plug/**
+          filters:
+            - StripPrefix=1
+            - OAuth2Authentication  
+            - PreserveHostHeader
+        - id: file-server
+          uri: http://localhost:9060
+          predicates:
+            - Path=/fs/**
+          filters:
+            - name: OAuth2Authentication
+              args:
+                whitelistPaths:
+                  - "/fs/file/download/**"
+            - PreserveHostHeader
+        - id: operation-server
+          uri: http://localhost:9070
+          predicates:
+            - Path=/operation/**
+          filters:
+            - name: OAuth2Authentication
+              args:
+                whitelistPaths:
+                  - "/operation/api/demand/findHomePageDemand"
+            - PreserveHostHeader
+      httpclient:
+        response-timeout: 600s
+        use-system-dns: true
+        compression: false
+        pool:
+          type: elastic
+          max-idle-time: 15000
+          max-life-time: 60000  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 2
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+

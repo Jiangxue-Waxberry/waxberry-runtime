@@ -1,0 +1,51 @@
+server:
+  port: 9050
+  forward-headers-strategy: framework
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/wb?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: wb
+    password: wb
+    hikari:
+      maximum-pool-size: 15        # 根据应用负载调整
+      minimum-idle: 15             # 与最大值相同
+      idle-timeout: 300000         # 5分钟
+      max-lifetime: 1800000        # 30分钟（建议比数据库超时短）
+      connection-timeout: 30000    # 30秒（获取连接超时时间）
+      leak-detection-threshold: 300000  # 5分钟（检测连接泄漏）
+      validation-timeout: 5000     # 5秒（连接验证超时）
+        # web:
+        #resources:
+        #static-locations: file:/data/waxberry/apps/waxberry-auth-fe
+  servlet:
+    multipart:
+      max-file-size: 100MB      # 单个文件的最大大小
+      max-request-size: 100MB   # 单个请求的最大大小（包含所有文件）      
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 2
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+
+fileserver:
+  minio:
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: waxberry
+
+auth:
+  ALIBABA_CLOUD_ACCESS_KEY_ID: 
+  ALIBABA_CLOUD_ACCESS_KEY_SECRET: 
+  issuerUrl: https://localhost
+  privateKey: 
